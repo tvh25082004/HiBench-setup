@@ -7,17 +7,17 @@ cd /Users/tranvanhuy/Desktop/Set-up
 make setup
 ```
 
-## Lệnh
+## Commands
 
 ```bash
-make start              # Khởi động
-make stop               # Dừng
-make status             # Xem trạng thái
-make shell-spark        # Vào Spark container
-make shell-hadoop       # Vào Hadoop container
+make start              # Start containers
+make stop               # Stop containers
+make status             # Check status
+make shell-spark        # Enter Spark container
+make shell-hadoop       # Enter Hadoop container
 make test               # Test WordCount
-make logs               # Xem logs
-make clean              # Xóa hết
+make logs               # View logs
+make clean              # Clean all
 ```
 
 ## Web UI
@@ -26,7 +26,7 @@ make clean              # Xóa hết
 - Spark Master: http://localhost:8080
 - Spark Worker: http://localhost:8081
 
-## Chạy Benchmark
+## Run Benchmarks
 
 ```bash
 make shell-spark
@@ -46,7 +46,7 @@ bin/workloads/micro/terasort/spark/run.sh
 bin/workloads/websearch/pagerank/prepare/prepare.sh
 bin/workloads/websearch/pagerank/spark/run.sh
 
-# Xem kết quả
+# View results
 cat report/hibench.report
 ```
 
@@ -90,7 +90,7 @@ Prepare Data → Upload to HDFS → Spark Process → Write to HDFS → Generate
 ## Troubleshooting
 
 ```bash
-# Xem logs
+# View logs
 make logs
 
 # Restart
@@ -109,8 +109,8 @@ docker ps
 
 ## Fixed Issues
 
-**Lỗi Java Not Found trên macOS:**
-- Lỗi: `/usr/lib/jvm/java-8-openjdk-amd64/bin/java: No such file or directory`
-- Nguyên nhân: Spark images không compatible với macOS
-- Giải pháp: Build custom Spark image với Java 11 (eclipse-temurin)
-- File: `Dockerfile.spark` + `config/spark/spark-env.sh`
+**Java Not Found Error on macOS:**
+- Error: `/usr/lib/jvm/java-8-openjdk-amd64/bin/java: No such file or directory`
+- Cause: Spark images not compatible with macOS
+- Solution: Build custom Spark image with Java 11 (eclipse-temurin)
+- Files: `Dockerfile.spark` + `config/spark/spark-env.sh`
