@@ -1,21 +1,10 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# Java Home
-export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
-
-# Spark Configuration
+export JAVA_HOME=/opt/java/openjdk
 export SPARK_MASTER_HOST=spark-master
 export SPARK_MASTER_PORT=7077
 export SPARK_MASTER_WEBUI_PORT=8080
-
-# Worker Configuration
 export SPARK_WORKER_CORES=2
 export SPARK_WORKER_MEMORY=2g
 export SPARK_WORKER_WEBUI_PORT=8081
-
-# Hadoop Configuration Directory
 export HADOOP_CONF_DIR=/etc/hadoop
-
-# History Server
-export SPARK_HISTORY_OPTS="-Dspark.history.fs.logDirectory=hdfs://namenode:9000/spark-logs"
-

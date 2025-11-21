@@ -106,3 +106,11 @@ docker exec namenode hdfs dfsadmin -report
 # Check containers
 docker ps
 ```
+
+## Fixed Issues
+
+**Lỗi Java Not Found trên macOS:**
+- Lỗi: `/usr/lib/jvm/java-8-openjdk-amd64/bin/java: No such file or directory`
+- Nguyên nhân: Spark images không compatible với macOS
+- Giải pháp: Build custom Spark image với Java 11 (eclipse-temurin)
+- File: `Dockerfile.spark` + `config/spark/spark-env.sh`
