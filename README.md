@@ -48,19 +48,10 @@ bin/workloads/websearch/pagerank/spark/run.sh
 
 # View results
 cat report/hibench.report
-```
 
-### HiBench Quick WordCount (Spark-native)
-
-HiBench gốc yêu cầu Hadoop MapReduce CLI nên đã được gói lại bằng Spark script (dữ liệu vẫn theo chuẩn HiBench).
-
-```bash
-# Từ root repo
+# Quick WordCount (Spark-only fallback)
+exit    # back to host
 bash test/hibench-official-wordcount.sh
-
-# Input/Output trên HDFS
-hdfs://namenode:9000/HiBench/Wordcount/Input
-hdfs://namenode:9000/HiBench/Wordcount/Output
 ```
 
 ## Architecture
