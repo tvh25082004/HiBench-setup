@@ -6,7 +6,7 @@
 set -e
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  🏆 HIBENCH CHÍNH THỐNG - WORDCOUNT BENCHMARK"
+echo "  🏆 HIBENCH CHÍNH  - WORDCOUNT BENCHMARK"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
