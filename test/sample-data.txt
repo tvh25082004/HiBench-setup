@@ -1,0 +1,21 @@
+Hello Spark and Hadoop!
+This is a test file for HDFS and Spark integration.
+Apache Spark is a unified analytics engine for large-scale data processing.
+Apache Hadoop provides reliable, scalable, distributed computing.
+HDFS stores data across multiple machines.
+Spark can read data from HDFS very efficiently.
+Let's test if everything works correctly!
+Big Data processing is powerful with Spark and Hadoop.
+This line contains the word Spark again.
+And this line mentions Hadoop one more time.
+Testing testing 123.
+MapReduce was the old way.
+Now Spark is the new standard.
+Real-time analytics with Spark Streaming.
+Machine learning with Spark MLlib.
+Graph processing with Spark GraphX.
+SQL queries with Spark SQL.
+Data science is easier with these tools.
+Scale horizontally by adding more nodes.
+Fault tolerance is built into the system.
+
