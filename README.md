@@ -1,120 +1,159 @@
-# HiBench Setup - Hadoop & Spark
+# HiBench - Hadoop & Spark Benchmark Suite
 
-## Setup
+Docker environment for running HiBench benchmarks with Hadoop HDFS and Apache Spark.
+
+## 🚀 Quick Start
 
 ```bash
-cd /Users/tranvanhuy/Desktop/Set-up
+# Initial setup (build containers, init HDFS, build HiBench)
 make setup
+
+# Start containers
+make start
+
+# Run WordCount benchmark test
+make test
 ```
 
-## Commands
+## 📋 Main Commands
 
+### Container Management
 ```bash
-make start              # Start containers
-make stop               # Stop containers
-make status             # Check status
-make shell-spark        # Enter Spark container
-make shell-hadoop       # Enter Hadoop container
-make test               # Test WordCount
-make logs               # View logs
-make clean              # Clean all
+make start        # Start containers
+make stop         # Stop containers
+make status       # View status
+make logs         # View logs
+make clean        # Remove everything (including data)
 ```
 
-## Web UI
-
-- Hadoop: http://localhost:9870
-- Spark Master: http://localhost:8080
-- Spark Worker: http://localhost:8081
-
-## Run Benchmarks
-
+### Development
 ```bash
-make shell-spark
-
-cd /opt/hibench
-cp /hibench/*.conf conf/
-
-# WordCount
-bin/workloads/micro/wordcount/prepare/prepare.sh
-bin/workloads/micro/wordcount/spark/run.sh
-
-# TeraSort
-bin/workloads/micro/terasort/prepare/prepare.sh
-bin/workloads/micro/terasort/spark/run.sh
-
-# PageRank
-bin/workloads/websearch/pagerank/prepare/prepare.sh
-bin/workloads/websearch/pagerank/spark/run.sh
-
-# View results
-cat report/hibench.report
-
-# Quick WordCount (Spark-only fallback)
-exit    # back to host
-bash test/hibench-official-wordcount.sh
+make shell-spark   # Enter Spark Master container
+make shell-hadoop  # Enter Hadoop NameNode container
+make test          # Test WordCount benchmark
 ```
 
-## Architecture
+## 🏆 Run Benchmarks
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    Docker Network                        │
-│                                                          │
-│  ┌─────────────┐      ┌──────────────┐                 │
-│  │  NameNode   │◄────►│  DataNode    │                 │
-│  │  (Hadoop)   │      │  (Hadoop)    │                 │
-│  │  :9000      │      │              │                 │
-│  │  :9870      │      │              │                 │
-│  └─────────────┘      └──────────────┘                 │
-│         ▲                                                │
-│         │ HDFS                                           │
-│         ▼                                                │
-│  ┌─────────────┐      ┌──────────────┐                 │
-│  │Spark Master │◄────►│Spark Worker  │                 │
-│  │:7077        │      │:8081         │                 │
-│  │:8080        │      │              │                 │
-│  └─────────────┘      └──────────────┘                 │
-│                                                          │
-└─────────────────────────────────────────────────────────┘
+### MICRO Benchmarks
+```bash
+make wordcount     # WordCount
+make sort          # Sort
+make terasort      # TeraSort
+make repartition   # Repartition
+make dfsioe-read   # DFSIOE Read
+make dfsioe-write  # DFSIOE Write
 ```
 
-## Data Flow
+### MACHINE LEARNING
+```bash
+make kmeans        # K-Means
+make bayes         # Naive Bayes
+make lr            # Logistic Regression
+make svm           # SVM
+make als           # ALS
+make rf            # Random Forest
+make gbt           # Gradient Boosted Trees
+make linear        # Linear Regression
+make gmm           # Gaussian Mixture Model
+make lda           # LDA
+make pca           # PCA
+make xgboost       # XGBoost
+make svd           # SVD
+```
+
+### SQL
+```bash
+make scan          # Scan
+make join          # Join
+make aggregation   # Aggregation
+```
+
+### WEB SEARCH
+```bash
+make pagerank      # PageRank
+make nutchindexing # Nutch Indexing
+```
+
+### GRAPH
+```bash
+make nweight       # N-Weight
+```
+
+### STREAMING
+```bash
+make identity              # Identity
+make repartition-streaming # Repartition Streaming
+make wordcount-streaming   # WordCount Streaming
+```
+
+## 🌐 Web UIs
+
+- **Hadoop NameNode**: http://localhost:9870
+- **Spark Master**: http://localhost:8080
+- **Spark Worker**: http://localhost:8081
+
+## 🏗️ Architecture
 
 ```
-Prepare Data → Upload to HDFS → Spark Process → Write to HDFS → Generate Report
+┌─────────────────────────────────────────┐
+│         Docker Network                  │
+│                                         │
+│  ┌──────────┐      ┌──────────┐       │
+│  │ NameNode │◄────►│ DataNode │       │
+│  │  :9000   │      │  (HDFS)  │       │
+│  │  :9870   │      │          │       │
+│  └────┬─────┘      └──────────┘       │
+│       │                                 │
+│       │ HDFS                            │
+│       ▼                                 │
+│  ┌──────────┐      ┌──────────┐       │
+│  │  Spark   │◄────►│  Spark   │       │
+│  │  Master  │      │  Worker  │       │
+│  │  :7077   │      │  :8081  │       │
+│  │  :8080   │      │          │       │
+│  └──────────┘      └──────────┘       │
+│                                         │
+└─────────────────────────────────────────┘
 ```
 
-## Config
+## 📁 Project Structure
 
-- `docker-compose.yml` - Container definitions
-- `config/hadoop/` - Hadoop configs
-- `config/spark/` - Spark configs  
-- `hibench-workspace/` - HiBench configs
+```
+Set-up/
+├── docker-compose.yml      # Container definitions
+├── Dockerfile.spark        # Spark image with Hadoop client
+├── config/
+│   ├── hadoop/            # Hadoop configs
+│   └── spark/             # Spark configs
+├── hibench-workspace/     # HiBench configs
+├── scripts/
+│   ├── setup.sh          # Setup script
+│   └── run-hibench-workload.sh  # Workload runner
+└── Makefile              # All commands
+```
 
-## Troubleshooting
+## 🔧 Troubleshooting
 
 ```bash
 # View logs
 make logs
 
-# Restart
-docker-compose restart
+# Restart containers
+make restart
 
-# Reset
+# Full reset
 make clean
 make setup
 
 # Check HDFS
-docker exec namenode hdfs dfsadmin -report
-
-# Check containers
-docker ps
+make hdfs-ls
+make hdfs-report
 ```
 
-## Fixed Issues
+## 📝 Notes
 
-**Java Not Found Error on macOS:**
-- Error: `/usr/lib/jvm/java-8-openjdk-amd64/bin/java: No such file or directory`
-- Cause: Spark images not compatible with macOS
-- Solution: Build custom Spark image with Java 11 (eclipse-temurin)
-- Files: `Dockerfile.spark` + `config/spark/spark-env.sh`
+- All benchmarks automatically run prepare phase (if available)
+- Results are saved in `/opt/hibench/report/` inside container
+- HDFS data is stored in Docker volumes
+- View all commands: `make help`

@@ -1,7 +1,13 @@
 # Makefile for HiBench Hadoop & Spark Setup
 # Usage: make <command>
 
-.PHONY: help setup start stop restart status logs clean check build shell-spark shell-hadoop test
+.PHONY: help setup start stop restart status logs clean check build shell-spark shell-hadoop test \
+	wordcount sort terasort repartition dfsioe-read dfsioe-write \
+	kmeans bayes lr svm als rf gbt linear gmm lda pca xgboost svd \
+	scan join aggregation \
+	pagerank nutchindexing \
+	nweight \
+	identity repartition-streaming wordcount-streaming
 
 # Default target
 help:
@@ -25,6 +31,46 @@ help:
 	@echo "  make shell-spark  - Enter Spark Master shell"
 	@echo "  make shell-hadoop - Enter Hadoop NameNode shell"
 	@echo "  make test         - Run benchmark test (WordCount)"
+	@echo ""
+	@echo "📊 MICRO Benchmarks:"
+	@echo "  make wordcount    - WordCount benchmark"
+	@echo "  make sort         - Sort benchmark"
+	@echo "  make terasort     - TeraSort benchmark"
+	@echo "  make repartition  - Repartition benchmark"
+	@echo "  make dfsioe-read  - DFSIOE Read benchmark"
+	@echo "  make dfsioe-write - DFSIOE Write benchmark"
+	@echo ""
+	@echo "🧠 MACHINE LEARNING Benchmarks:"
+	@echo "  make kmeans       - K-Means clustering"
+	@echo "  make bayes        - Naive Bayes"
+	@echo "  make lr           - Logistic Regression"
+	@echo "  make svm          - Support Vector Machine"
+	@echo "  make als          - Alternating Least Squares"
+	@echo "  make rf           - Random Forest"
+	@echo "  make gbt          - Gradient Boosted Trees"
+	@echo "  make linear       - Linear Regression"
+	@echo "  make gmm          - Gaussian Mixture Model"
+	@echo "  make lda          - Latent Dirichlet Allocation"
+	@echo "  make pca          - Principal Component Analysis"
+	@echo "  make xgboost      - XGBoost"
+	@echo "  make svd          - Singular Value Decomposition"
+	@echo ""
+	@echo "📊 SQL Benchmarks:"
+	@echo "  make scan         - Scan benchmark"
+	@echo "  make join         - Join benchmark"
+	@echo "  make aggregation  - Aggregation benchmark"
+	@echo ""
+	@echo "🌐 WEB SEARCH Benchmarks:"
+	@echo "  make pagerank     - PageRank algorithm"
+	@echo "  make nutchindexing - Nutch Indexing"
+	@echo ""
+	@echo "🕸️  GRAPH Benchmarks:"
+	@echo "  make nweight      - N-Weight graph algorithm"
+	@echo ""
+	@echo "⚡ STREAMING Benchmarks:"
+	@echo "  make identity              - Identity streaming"
+	@echo "  make repartition-streaming - Repartition streaming"
+	@echo "  make wordcount-streaming   - WordCount streaming"
 	@echo ""
 	@echo "🌐 Web UIs:"
 	@echo "  - Hadoop:  http://localhost:9870"
@@ -152,4 +198,112 @@ hdfs-clean:
 	@echo "🗑️  Cleaning HiBench data on HDFS..."
 	docker exec namenode hdfs dfs -rm -r -f /HiBench/* || true
 	@echo "✅ HDFS cleaned!"
+
+# ============================================================================
+# MICRO Benchmarks
+# ============================================================================
+
+wordcount:
+	@bash scripts/run-hibench-workload.sh micro wordcount spark
+
+sort:
+	@bash scripts/run-hibench-workload.sh micro sort spark
+
+terasort:
+	@bash scripts/run-hibench-workload.sh micro terasort spark
+
+repartition:
+	@bash scripts/run-hibench-workload.sh micro repartition spark
+
+dfsioe-read:
+	@bash scripts/run-hibench-workload.sh micro dfsioe read
+
+dfsioe-write:
+	@bash scripts/run-hibench-workload.sh micro dfsioe write
+
+# ============================================================================
+# MACHINE LEARNING Benchmarks
+# ============================================================================
+
+kmeans:
+	@bash scripts/run-hibench-workload.sh ml kmeans spark
+
+bayes:
+	@bash scripts/run-hibench-workload.sh ml bayes spark
+
+lr:
+	@bash scripts/run-hibench-workload.sh ml lr spark
+
+svm:
+	@bash scripts/run-hibench-workload.sh ml svm spark
+
+als:
+	@bash scripts/run-hibench-workload.sh ml als spark
+
+rf:
+	@bash scripts/run-hibench-workload.sh ml rf spark
+
+gbt:
+	@bash scripts/run-hibench-workload.sh ml gbt spark
+
+linear:
+	@bash scripts/run-hibench-workload.sh ml linear spark
+
+gmm:
+	@bash scripts/run-hibench-workload.sh ml gmm spark
+
+lda:
+	@bash scripts/run-hibench-workload.sh ml lda spark
+
+pca:
+	@bash scripts/run-hibench-workload.sh ml pca spark
+
+xgboost:
+	@bash scripts/run-hibench-workload.sh ml xgboost spark
+
+svd:
+	@bash scripts/run-hibench-workload.sh ml svd spark
+
+# ============================================================================
+# SQL Benchmarks
+# ============================================================================
+
+scan:
+	@bash scripts/run-hibench-workload.sh sql scan spark
+
+join:
+	@bash scripts/run-hibench-workload.sh sql join spark
+
+aggregation:
+	@bash scripts/run-hibench-workload.sh sql aggregation spark
+
+# ============================================================================
+# WEB SEARCH Benchmarks
+# ============================================================================
+
+pagerank:
+	@bash scripts/run-hibench-workload.sh websearch pagerank spark
+
+nutchindexing:
+	@bash scripts/run-hibench-workload.sh websearch nutchindexing spark
+
+# ============================================================================
+# GRAPH Benchmarks
+# ============================================================================
+
+nweight:
+	@bash scripts/run-hibench-workload.sh graph nweight spark
+
+# ============================================================================
+# STREAMING Benchmarks
+# ============================================================================
+
+identity:
+	@bash scripts/run-hibench-workload.sh streaming identity spark
+
+repartition-streaming:
+	@bash scripts/run-hibench-workload.sh streaming repartition spark
+
+wordcount-streaming:
+	@bash scripts/run-hibench-workload.sh streaming wordcount spark
 
