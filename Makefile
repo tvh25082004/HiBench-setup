@@ -7,7 +7,8 @@
 	scan join aggregation \
 	pagerank nutchindexing \
 	nweight \
-	identity repartition-streaming wordcount-streaming
+	identity repartition-streaming wordcount-streaming \
+	check-job
 
 # Default target
 help:
@@ -26,6 +27,7 @@ help:
 	@echo "  make status       - View container status"
 	@echo "  make logs         - View logs of all services"
 	@echo "  make check        - Check health of services"
+	@echo "  make check-job    - Check WordCount job status"
 	@echo ""
 	@echo "🔧 Development:"
 	@echo "  make shell-spark  - Enter Spark Master shell"
@@ -306,4 +308,32 @@ repartition-streaming:
 
 wordcount-streaming:
 	@bash scripts/run-hibench-workload.sh streaming wordcount spark
+
+# ============================================================================
+# Job Status Check
+# ============================================================================
+
+# Check job status
+check-job:
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "🔍 KIỂM TRA JOB WORDCOUNT"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo ""
+	@echo "1️⃣  Kiểm tra file _SUCCESS:"
+	@if docker exec namenode hdfs dfs -test -e /HiBench/Wordcount/Output/_SUCCESS 2>/dev/null; then \
+		echo "   ✅ JOB ĐÃ THÀNH CÔNG!"; \
+	else \
+		echo "   ❌ Job chưa hoàn thành hoặc thất bại"; \
+	fi
+	@echo ""
+	@echo "2️⃣  Danh sách output files:"
+	@docker exec namenode hdfs dfs -ls -h /HiBench/Wordcount/Output/ 2>/dev/null | head -10 || echo "   (Không tìm thấy output)"
+	@echo ""
+	@echo "3️⃣  Spark Event Log (đã tạo):"
+	@docker exec namenode hdfs dfs -ls -h /spark-logs/ 2>/dev/null | tail -5 || echo "   (Không tìm thấy event logs)"
+	@echo ""
+	@echo "4️⃣  Sample kết quả (5 dòng đầu):"
+	@docker exec namenode hdfs dfs -cat /HiBench/Wordcount/Output/part-* 2>/dev/null | head -5 || echo "   (Không thể đọc kết quả)"
+	@echo ""
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
