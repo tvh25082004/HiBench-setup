@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-"""
-HiBench Log Workflow Analyzer
-Phân tích workflow từ benchmark logs và so sánh giữa các task khác nhau
-"""
+
 
 import re
 import sys
@@ -14,7 +11,7 @@ from typing import Dict, List, Set, Optional
 
 
 class LogWorkflowAnalyzer:
-    """Phân tích workflow từ HiBench logs"""
+    """Analyze workflow from HiBench logs"""
     
     def __init__(self):
         self.workflow_patterns = {
@@ -38,7 +35,7 @@ class LogWorkflowAnalyzer:
         }
         
     def parse_log_file(self, log_path: Path) -> Dict:
-        """Parse một log file và extract workflow"""
+        """Parse a log file and extract workflow"""
         if not log_path.exists():
             return None
             
@@ -95,7 +92,7 @@ class LogWorkflowAnalyzer:
         return match.group(1) if match else None
     
     def _extract_phases(self, content: str) -> Dict:
-        """Extract các phases từ log"""
+        """Extract phases from log"""
         phases = {}
         
         # Prepare phase
@@ -207,7 +204,7 @@ class LogWorkflowAnalyzer:
         return durations
     
     def _extract_errors(self, lines: List[str]) -> List[str]:
-        """Extract errors và warnings"""
+        """Extract errors and warnings"""
         errors = []
         
         for i, line in enumerate(lines):
@@ -246,7 +243,7 @@ class LogWorkflowAnalyzer:
         return steps
     
     def compare_workflows(self, workflows: List[Dict]) -> Dict:
-        """So sánh workflows giữa các benchmark"""
+        """Compare workflows between benchmarks"""
         comparison = {
             'common_steps': set(),
             'unique_steps': defaultdict(list),
@@ -295,7 +292,7 @@ class LogWorkflowAnalyzer:
         return comparison
     
     def generate_report(self, workflows: List[Dict], comparison: Dict) -> str:
-        """Generate báo cáo so sánh"""
+        """Generate comparison report"""
         report = []
         report.append("=" * 80)
         report.append("HIBENCH WORKFLOW ANALYSIS REPORT")

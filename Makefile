@@ -322,24 +322,24 @@ wordcount-streaming:
 # Check job status
 check-job:
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo "🔍 KIỂM TRA JOB WORDCOUNT"
+	@echo "🔍 CHECK WORDCOUNT JOB"
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@echo ""
-	@echo "1️⃣  Kiểm tra file _SUCCESS:"
+	@echo "1️⃣  Check _SUCCESS file:"
 	@if docker exec namenode hdfs dfs -test -e /HiBench/Wordcount/Output/_SUCCESS 2>/dev/null; then \
-		echo "   ✅ JOB ĐÃ THÀNH CÔNG!"; \
+		echo "   ✅ JOB SUCCEEDED!"; \
 	else \
-		echo "   ❌ Job chưa hoàn thành hoặc thất bại"; \
+		echo "   ❌ Job not completed or failed"; \
 	fi
 	@echo ""
-	@echo "2️⃣  Danh sách output files:"
-	@docker exec namenode hdfs dfs -ls -h /HiBench/Wordcount/Output/ 2>/dev/null | head -10 || echo "   (Không tìm thấy output)"
+	@echo "2️⃣  Output files list:"
+	@docker exec namenode hdfs dfs -ls -h /HiBench/Wordcount/Output/ 2>/dev/null | head -10 || echo "   (No output found)"
 	@echo ""
-	@echo "3️⃣  Spark Event Log (đã tạo):"
-	@docker exec namenode hdfs dfs -ls -h /spark-logs/ 2>/dev/null | tail -5 || echo "   (Không tìm thấy event logs)"
+	@echo "3️⃣  Spark Event Log (created):"
+	@docker exec namenode hdfs dfs -ls -h /spark-logs/ 2>/dev/null | tail -5 || echo "   (No event logs found)"
 	@echo ""
-	@echo "4️⃣  Sample kết quả (5 dòng đầu):"
-	@docker exec namenode hdfs dfs -cat /HiBench/Wordcount/Output/part-* 2>/dev/null | head -5 || echo "   (Không thể đọc kết quả)"
+	@echo "4️⃣  Sample results (first 5 lines):"
+	@docker exec namenode hdfs dfs -cat /HiBench/Wordcount/Output/part-* 2>/dev/null | head -5 || echo "   (Cannot read results)"
 	@echo ""
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
@@ -349,28 +349,28 @@ check-job:
 
 # List all benchmark log files
 logs-list:
-	@echo "📝 Danh sách benchmark logs:"
+	@echo "📝 Benchmark logs list:"
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@if [ -d "logs" ] && [ -n "$$(ls -A logs 2>/dev/null)" ]; then \
 		ls -lh logs/*.log 2>/dev/null | awk '{print "   " $$9 " (" $$5 ")"}'; \
 		echo ""; \
-		echo "   Tổng số: $$(ls -1 logs/*.log 2>/dev/null | wc -l) file(s)"; \
+		echo "   Total: $$(ls -1 logs/*.log 2>/dev/null | wc -l) file(s)"; \
 	else \
-		echo "   (Chưa có log files)"; \
+		echo "   (No log files yet)"; \
 	fi
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 # View latest benchmark log
 logs-latest:
-	@echo "📖 Xem log mới nhất:"
+	@echo "📖 View latest log:"
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@if [ -d "logs" ] && [ -n "$$(ls -A logs/*.log 2>/dev/null)" ]; then \
 		LATEST_LOG=$$(ls -t logs/*.log 2>/dev/null | head -1); \
 		echo "   File: $$LATEST_LOG"; \
 		echo ""; \
-		tail -50 "$$LATEST_LOG" || echo "   (Không thể đọc file)"; \
+		tail -50 "$$LATEST_LOG" || echo "   (Cannot read file)"; \
 	else \
-		echo "   (Chưa có log files)"; \
+		echo "   (No log files yet)"; \
 	fi
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
@@ -379,16 +379,16 @@ logs-view:
 	@if [ -z "$$FILE" ]; then \
 		echo "❌ Usage: make logs-view FILE=logs/benchmark-xxx.log"; \
 		echo ""; \
-		echo "📝 Danh sách logs có sẵn:"; \
-		ls -1 logs/*.log 2>/dev/null | head -10 || echo "   (Chưa có log files)"; \
+		echo "📝 Available logs list:"; \
+		ls -1 logs/*.log 2>/dev/null | head -10 || echo "   (No log files yet)"; \
 		exit 1; \
 	fi
 	@if [ -f "$$FILE" ]; then \
-		echo "📖 Xem log: $$FILE"; \
+		echo "📖 View log file: $$FILE"; \
 		echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"; \
 		cat "$$FILE"; \
 	else \
-		echo "❌ File không tồn tại: $$FILE"; \
+		echo "❌ File does not exist: $$FILE"; \
 		exit 1; \
 	fi
 
@@ -399,11 +399,11 @@ logs-clean:
 		find logs -name "*.log" -type f -mtime +7 -delete 2>/dev/null; \
 		DELETED=$$(find logs -name "*.log" -type f -mtime +7 2>/dev/null | wc -l); \
 		if [ "$$DELETED" -gt 0 ]; then \
-			echo "✅ Đã xóa $$DELETED file(s)"; \
+			echo "✅ Deleted $$DELETED file(s)"; \
 		else \
-			echo "✅ Không có file nào cần xóa"; \
+			echo "✅ No files to delete"; \
 		fi; \
 	else \
-		echo "✅ Thư mục logs không tồn tại"; \
+		echo "✅ Logs directory does not exist"; \
 	fi
 
