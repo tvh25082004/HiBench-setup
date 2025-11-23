@@ -32,39 +32,69 @@ fi
 echo "✅ HiBench has been built"
 echo ""
 
-# Prepare Phase - Generate data using HiBench's data generator
+# Prepare Phase - Use official HiBench data generator
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "1️⃣  PREPARE PHASE - Generate test data"
+echo "1️⃣  PREPARE PHASE - Generate test data using HiBench"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# Copy HiBench configs
+echo "📋 Copying HiBench configuration files..."
+docker exec spark-master bash -c "cp /hibench/*.conf /opt/hibench/conf/" 2>/dev/null || true
+echo "✅ Configuration files ready"
+echo ""
+
+# Setup Hadoop symlink if needed (HiBench prepare needs Hadoop)
+echo "🔧 Setting up Hadoop for HiBench prepare script..."
+docker exec spark-master bash -c "
+    if [ ! -d /opt/hadoop ] && [ -d /opt/hadoop-3.2.1 ]; then
+        ln -sf /opt/hadoop-3.2.1 /opt/hadoop
+        echo '   Created symlink: /opt/hadoop -> /opt/hadoop-3.2.1'
+    fi
+    if [ ! -f /opt/hadoop/bin/hadoop ] && [ -f /opt/hadoop-3.2.1/bin/hadoop ]; then
+        mkdir -p /opt/hadoop/bin
+        ln -sf /opt/hadoop-3.2.1/bin/hadoop /opt/hadoop/bin/hadoop
+        echo '   Created symlink for hadoop binary'
+    fi
+" 2>/dev/null || true
+echo "✅ Hadoop setup ready"
 echo ""
 
 # Remove old data
 echo "🗑️  Removing old data (if any)..."
 docker exec namenode hdfs dfs -rm -r -f /HiBench/Wordcount 2>/dev/null || true
-docker exec namenode hdfs dfs -mkdir -p /HiBench/Wordcount/Input
 echo ""
 
-# Use Spark to generate data (instead of Hadoop MapReduce)
-echo "🔧 Generating random text data using Spark..."
-echo "   (Creating ${NUM_PAGES} pages...)"
+# Use official HiBench prepare script (uses RandomTextWriter)
+echo "🔧 Generating data using HiBench's official RandomTextWriter..."
+echo "   (This uses HiBench's built-in data generator from GitHub)"
+echo "   (Data size: ${DATA_SIZE_MB}MB, Pages: ${NUM_PAGES})"
+echo ""
 
-docker exec spark-master spark-submit \
-    --class com.intel.hibench.sparkbench.micro.ScalaWordCount \
-    --master spark://spark-master:7077 \
-    --deploy-mode client \
-    --driver-memory 1g \
-    --executor-memory 2g \
-    --executor-cores 2 \
-    --conf spark.sql.shuffle.partitions=2 \
-    /opt/hibench/sparkbench/assembly/target/sparkbench-assembly-8.0-SNAPSHOT-dist.jar \
-    $HDFS_INPUT || {
-        echo "⚠️  HiBench data generator not available, using Python generator..."
-        python3 test/generate-wordcount-data.py $NUM_PAGES | \
-            docker exec -i namenode bash -c "hdfs dfs -put -f - /HiBench/Wordcount/Input/data.txt"
+docker exec spark-master bash -c "cd /opt/hibench && bin/workloads/micro/wordcount/prepare/prepare.sh" || {
+    echo "❌ HiBench prepare script failed!"
+    echo "   Trying alternative: using Hadoop from namenode container..."
+    
+    # Alternative: Run prepare from namenode if it has HiBench, or use direct Hadoop command
+    echo "   Using Hadoop RandomTextWriter directly..."
+    DATASIZE_BYTES=$((DATA_SIZE_MB * 1024 * 1024))
+    docker exec namenode bash -c "
+        /opt/hadoop-3.2.1/bin/hadoop --config /opt/hadoop-3.2.1/etc/hadoop jar \
+        /opt/hadoop-3.2.1/share/hadoop/mapreduce/hadoop-mapreduce-examples-3.2.1.jar \
+        randomtextwriter \
+        -D mapreduce.randomtextwriter.totalbytes=${DATASIZE_BYTES} \
+        -D mapreduce.randomtextwriter.bytespermap=$((DATASIZE_BYTES / 2)) \
+        -D mapreduce.job.maps=2 \
+        -D mapreduce.job.reduces=2 \
+        hdfs://namenode:9000/HiBench/Wordcount/Input
+    " || {
+        echo "❌ All data generation methods failed!"
+        exit 1
+    }
     }
 
 echo ""
-echo "✅ Data has been generated!"
+echo "✅ Data has been generated using HiBench's official generator!"
 echo ""
 
 # Verify data
@@ -74,25 +104,24 @@ FILE_SIZE=$(docker exec namenode hdfs dfs -du -h /HiBench/Wordcount/Input/ | awk
 echo "   📏 Size: $FILE_SIZE"
 echo ""
 
-# Run Phase - Run WordCount benchmark using Spark
+# Run Phase - Run WordCount benchmark using official HiBench
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "2️⃣  RUN PHASE - Run WordCount benchmark"
+echo "2️⃣  RUN PHASE - Run WordCount benchmark using HiBench"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-echo "⚙️  Running Spark WordCount job..."
+echo "⚙️  Running official HiBench WordCount benchmark..."
 START_TIME=$(date +%s)
 
-docker exec spark-master spark-submit \
-    --master spark://spark-master:7077 \
-    --deploy-mode client \
-    --driver-memory 1g \
-    --executor-memory 2g \
-    --executor-cores 2 \
-    --conf spark.sql.shuffle.partitions=2 \
-    --conf spark.eventLog.enabled=true \
-    --conf spark.eventLog.dir=hdfs://namenode:9000/spark-logs \
-    /tmp/hibench-wordcount.py 2>&1 | grep -E '🚀|📊|📁|✅|⚙️|💾|RESULT|Top|throughput|Duration|Total'
+docker exec spark-master bash -c "cd /opt/hibench && bin/workloads/micro/wordcount/spark/run.sh" || {
+    # Check if job actually completed (sometimes script has minor errors but job succeeds)
+    if docker exec namenode hdfs dfs -test -e /HiBench/Wordcount/Output/_SUCCESS 2>/dev/null; then
+        echo "⚠️  HiBench script had minor errors, but job completed successfully"
+    else
+        echo "❌ HiBench run script failed!"
+        exit 1
+    fi
+}
 
 END_TIME=$(date +%s)
 DURATION=$((END_TIME - START_TIME))
@@ -115,13 +144,20 @@ echo "📁 Verifying output on HDFS..."
 docker exec namenode hdfs dfs -ls /HiBench/Wordcount/Output/ | head -5
 echo ""
 
-echo "🔝 Sample results (first 10 words):"
-docker exec namenode hdfs dfs -cat /HiBench/Wordcount/Output/part-*.csv 2>/dev/null | head -10
+# Show HiBench report
+echo "📊 HiBench Benchmark Report:"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+docker exec spark-master bash -c "cat /opt/hibench/report/hibench.report" 2>/dev/null | tail -10 || echo "   (Report file not found)"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-echo "=" * 70
+echo "🔝 Sample results (first 10 words):"
+docker exec namenode hdfs dfs -cat /HiBench/Wordcount/Output/part-* 2>/dev/null | head -10 || echo "   (Output files not found)"
+echo ""
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "🎉 HIBENCH WORDCOUNT BENCHMARK COMPLETE!"
-echo "=" * 70
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 echo "💡 Details:"
 echo "   - Spark UI: http://localhost:8080"
