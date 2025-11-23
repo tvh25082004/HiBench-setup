@@ -124,7 +124,7 @@ docker exec spark-master bash -c "
             -DskipTests \
             -U \
             clean package -pl sparkbench/assembly -am
-    " || {
+" || {
         echo "❌ HiBench build failed completely!"
         echo "⚠️  You may need to build manually inside the container"
         exit 1

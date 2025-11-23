@@ -1,8 +1,10 @@
 FROM eclipse-temurin:11-jre
 
 ENV SPARK_VERSION=3.3.2
-ENV HADOOP_VERSION=3
+ENV HADOOP_VERSION=3.2.1
+ENV HADOOP_VERSION_SHORT=3
 ENV SPARK_HOME=/opt/spark
+ENV HADOOP_HOME=/opt/hadoop
 ENV JAVA_HOME=/opt/java/openjdk
 ENV HIBENCH_HOME=/opt/hibench
 ENV SCALA_VERSION=2.12
@@ -24,26 +26,36 @@ RUN apt-get update && \
 RUN ln -sf /usr/bin/python3 /usr/bin/python && \
     ln -sf /usr/bin/python3 /usr/bin/python2
 
-# Download and install Spark
-RUN wget -q https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz && \
-    tar -xzf spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz && \
-    mv spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION} ${SPARK_HOME} && \
-    rm spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz
+# Download and install Hadoop client (required by HiBench for HDFS operations)
+RUN wget -q https://archive.apache.org/dist/hadoop/common/hadoop-${HADOOP_VERSION}/hadoop-${HADOOP_VERSION}.tar.gz && \
+    tar -xzf hadoop-${HADOOP_VERSION}.tar.gz -C /opt/ && \
+    mv /opt/hadoop-${HADOOP_VERSION} ${HADOOP_HOME} && \
+    rm hadoop-${HADOOP_VERSION}.tar.gz && \
+    # Create symlink for compatibility (some scripts expect hadoop-3.2.1)
+    ln -sf ${HADOOP_HOME} /opt/hadoop-${HADOOP_VERSION}
+
+# Download and install Spark (use HADOOP_VERSION_SHORT for Spark URL)
+RUN wget -q https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION_SHORT}.tgz && \
+    tar -xzf spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION_SHORT}.tgz && \
+    mv spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION_SHORT} ${SPARK_HOME} && \
+    rm spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION_SHORT}.tgz
 
 # Clone HiBench (build will be done at runtime with proper Java version)
 RUN git clone https://github.com/Intel-bigdata/HiBench.git ${HIBENCH_HOME} && \
     cd ${HIBENCH_HOME} && \
-    # Patch Python 2 to Python 3 compatibility - fix print statements
+    # Patch Python 2 to Python 3 compatibility - fix print statements (all Python files)
     find . -name "*.py" -type f -exec sed -i 's/^\([[:space:]]*\)print \(.*\)$/\1print(\2)/g' {} \; || true && \
+    find . -name "*.py" -type f -exec sed -i 's/print \(/print(/g' {} \; || true && \
     # Fix specific load_config.py issues
     sed -i 's/print export_config/print(export_config)/g' bin/functions/load_config.py || true && \
-    # Fix regex escape sequences for Python 3
-    sed -i 's/\\\$/\\\\$/g' bin/functions/load_config.py || true && \
-    sed -i 's/\\s/\\\\s/g' bin/functions/load_config.py || true && \
-    # Fix dict.items() concatenation for Python 3
-    sed -i 's/dict\.items() + dict\.items()/list(dict.items()) + list(dict.items())/g' bin/functions/load_config.py || true
+    # Fix dict.items() concatenation for Python 3 - fix all occurrences
+    sed -i 's/\([A-Za-z_][A-Za-z0-9_]*\)\.items() + \([A-Za-z_][A-Za-z0-9_]*\)\.items()/list(\1.items()) + list(\2.items())/g' bin/functions/load_config.py || true && \
+    # Fix regex patterns to use raw strings (fix specific lines)
+    sed -i '163s/re.split("/re.split(r"/' bin/functions/load_config.py || true && \
+    sed -i '484s/"\\</r"\\</' bin/functions/load_config.py || true && \
+    sed -i '487s/"\\</r"\\</' bin/functions/load_config.py || true
 
-ENV PATH=$PATH:${SPARK_HOME}/bin:${SPARK_HOME}/sbin:${HIBENCH_HOME}/bin
+ENV PATH=$PATH:${HADOOP_HOME}/bin:${HADOOP_HOME}/sbin:${SPARK_HOME}/bin:${SPARK_HOME}/sbin:${HIBENCH_HOME}/bin
 
 WORKDIR ${SPARK_HOME}
 

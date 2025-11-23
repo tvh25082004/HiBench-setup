@@ -22,14 +22,39 @@ echo "   - Input: $HDFS_INPUT"
 echo "   - Output: $HDFS_OUTPUT"
 echo ""
 
-# Check if HiBench has been built
+# Check if HiBench has been built, if not, build it
 if ! docker exec spark-master test -f /opt/hibench/sparkbench/assembly/target/sparkbench-assembly-8.0-SNAPSHOT-dist.jar; then
-    echo "❌ HiBench has not been built!"
-    echo "   Run: docker exec spark-master bash -c 'cd /opt/hibench && mvn -Psparkbench clean package -DskipTests'"
-    exit 1
+    echo "⚠️  HiBench has not been built yet!"
+    echo "🔨 Building HiBench now (this may take a few minutes)..."
+    echo "   Spark: 3.3.2, Scala: 2.12"
+    echo ""
+    
+    docker exec spark-master bash -c "
+        export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64 && \
+        export PATH=\$JAVA_HOME/bin:\$PATH && \
+        cd /opt/hibench && \
+        mvn -Psparkbench,scala2.12 \
+            -Dspark.version=3.3.2 \
+            -Dmaven.compiler.source=8 \
+            -Dmaven.compiler.target=8 \
+            -DskipTests \
+            -U \
+            clean package -pl sparkbench/assembly -am
+    " || {
+        echo "❌ HiBench build failed!"
+        echo "   Please run 'make setup' to build HiBench manually"
+        exit 1
+    }
+    
+    # Verify build
+    if ! docker exec spark-master test -f /opt/hibench/sparkbench/assembly/target/sparkbench-assembly-8.0-SNAPSHOT-dist.jar; then
+        echo "❌ HiBench build verification failed!"
+        exit 1
+    fi
+    echo "✅ HiBench build completed successfully!"
+else
+    echo "✅ HiBench has been built"
 fi
-
-echo "✅ HiBench has been built"
 echo ""
 
 # Prepare Phase - Use official HiBench data generator
@@ -44,20 +69,23 @@ docker exec spark-master bash -c "cp /hibench/*.conf /opt/hibench/conf/" 2>/dev/
 echo "✅ Configuration files ready"
 echo ""
 
-# Setup Hadoop symlink if needed (HiBench prepare needs Hadoop)
-echo "🔧 Setting up Hadoop for HiBench prepare script..."
+# Verify Hadoop is available in spark-master container
+echo "🔧 Verifying Hadoop setup in spark-master container..."
 docker exec spark-master bash -c "
-    if [ ! -d /opt/hadoop ] && [ -d /opt/hadoop-3.2.1 ]; then
-        ln -sf /opt/hadoop-3.2.1 /opt/hadoop
-        echo '   Created symlink: /opt/hadoop -> /opt/hadoop-3.2.1'
+    if [ ! -f /opt/hadoop/bin/hadoop ]; then
+        echo '❌ ERROR: Hadoop CLI not found at /opt/hadoop/bin/hadoop'
+        echo '   Please rebuild the container: docker-compose build spark-master'
+        exit 1
     fi
-    if [ ! -f /opt/hadoop/bin/hadoop ] && [ -f /opt/hadoop-3.2.1/bin/hadoop ]; then
-        mkdir -p /opt/hadoop/bin
-        ln -sf /opt/hadoop-3.2.1/bin/hadoop /opt/hadoop/bin/hadoop
-        echo '   Created symlink for hadoop binary'
-    fi
-" 2>/dev/null || true
-echo "✅ Hadoop setup ready"
+    echo '✅ Hadoop CLI found at /opt/hadoop/bin/hadoop'
+    /opt/hadoop/bin/hadoop version | head -1
+    echo ''
+    echo '✅ Hadoop configuration:'
+    echo '   HDFS NameNode: hdfs://namenode:9000'
+" || {
+    echo "❌ Hadoop verification failed!"
+    exit 1
+}
 echo ""
 
 # Remove old data
@@ -71,11 +99,19 @@ echo "   (This uses HiBench's built-in data generator from GitHub)"
 echo "   (Data size: ${DATA_SIZE_MB}MB, Pages: ${NUM_PAGES})"
 echo ""
 
-docker exec spark-master bash -c "cd /opt/hibench && bin/workloads/micro/wordcount/prepare/prepare.sh" || {
-    echo "❌ HiBench prepare script failed!"
-    echo "   Trying alternative: using Hadoop from namenode container..."
-    
-    # Alternative: Run prepare from namenode if it has HiBench, or use direct Hadoop command
+# Run HiBench prepare script (may have bash warnings but job can still succeed)
+echo "   Running HiBench prepare script..."
+PREPARE_OUTPUT=$(docker exec spark-master bash -c "cd /opt/hibench && set +e && bin/workloads/micro/wordcount/prepare/prepare.sh 2>&1; exit 0" 2>&1)
+echo "$PREPARE_OUTPUT" | grep -v "unbound variable" | grep -v "SyntaxWarning" | tail -20 || true
+
+# Check if data was actually generated (ignore script exit code, check HDFS)
+echo ""
+echo "📊 Verifying data generation..."
+if docker exec namenode hdfs dfs -test -e /HiBench/Wordcount/Input/_SUCCESS 2>/dev/null; then
+    echo "✅ Data has been generated successfully!"
+    echo "   (HiBench prepare job completed, ignoring minor bash script warnings)"
+else
+    echo "⚠️  HiBench prepare script had issues, trying alternative method..."
     echo "   Using Hadoop RandomTextWriter directly..."
     DATASIZE_BYTES=$((DATA_SIZE_MB * 1024 * 1024))
     docker exec namenode bash -c "
@@ -91,10 +127,8 @@ docker exec spark-master bash -c "cd /opt/hibench && bin/workloads/micro/wordcou
         echo "❌ All data generation methods failed!"
         exit 1
     }
-    }
+fi
 
-echo ""
-echo "✅ Data has been generated using HiBench's official generator!"
 echo ""
 
 # Verify data
@@ -113,7 +147,15 @@ echo ""
 echo "⚙️  Running official HiBench WordCount benchmark..."
 START_TIME=$(date +%s)
 
-docker exec spark-master bash -c "cd /opt/hibench && bin/workloads/micro/wordcount/spark/run.sh" || {
+# Set environment variables for HiBench scripts
+docker exec spark-master bash -c "
+    export INPUT_HDFS=hdfs://namenode:9000/HiBench/Wordcount/Input && \
+    export OUTPUT_HDFS=hdfs://namenode:9000/HiBench/Wordcount/Output && \
+    export HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop && \
+    export HADOOP_HOME=/opt/hadoop && \
+    cd /opt/hibench && \
+    bin/workloads/micro/wordcount/spark/run.sh
+" || {
     # Check if job actually completed (sometimes script has minor errors but job succeeds)
     if docker exec namenode hdfs dfs -test -e /HiBench/Wordcount/Output/_SUCCESS 2>/dev/null; then
         echo "⚠️  HiBench script had minor errors, but job completed successfully"
