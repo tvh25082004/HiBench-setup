@@ -8,7 +8,7 @@
 	pagerank nutchindexing \
 	nweight \
 	identity repartition-streaming wordcount-streaming \
-	check-job
+	check-job logs-list logs-latest logs-view logs-clean
 
 # Default target
 help:
@@ -28,6 +28,12 @@ help:
 	@echo "  make logs         - View logs of all services"
 	@echo "  make check        - Check health of services"
 	@echo "  make check-job    - Check WordCount job status"
+	@echo ""
+	@echo "📝 Benchmark Logs:"
+	@echo "  make logs-list    - List all benchmark log files"
+	@echo "  make logs-latest  - View latest benchmark log"
+	@echo "  make logs-view    - View a specific log file"
+	@echo "  make logs-clean   - Clean old log files"
 	@echo ""
 	@echo "🔧 Development:"
 	@echo "  make shell-spark  - Enter Spark Master shell"
@@ -336,4 +342,68 @@ check-job:
 	@docker exec namenode hdfs dfs -cat /HiBench/Wordcount/Output/part-* 2>/dev/null | head -5 || echo "   (Không thể đọc kết quả)"
 	@echo ""
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+# ============================================================================
+# Benchmark Logs Management
+# ============================================================================
+
+# List all benchmark log files
+logs-list:
+	@echo "📝 Danh sách benchmark logs:"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@if [ -d "logs" ] && [ -n "$$(ls -A logs 2>/dev/null)" ]; then \
+		ls -lh logs/*.log 2>/dev/null | awk '{print "   " $$9 " (" $$5 ")"}'; \
+		echo ""; \
+		echo "   Tổng số: $$(ls -1 logs/*.log 2>/dev/null | wc -l) file(s)"; \
+	else \
+		echo "   (Chưa có log files)"; \
+	fi
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+# View latest benchmark log
+logs-latest:
+	@echo "📖 Xem log mới nhất:"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@if [ -d "logs" ] && [ -n "$$(ls -A logs/*.log 2>/dev/null)" ]; then \
+		LATEST_LOG=$$(ls -t logs/*.log 2>/dev/null | head -1); \
+		echo "   File: $$LATEST_LOG"; \
+		echo ""; \
+		tail -50 "$$LATEST_LOG" || echo "   (Không thể đọc file)"; \
+	else \
+		echo "   (Chưa có log files)"; \
+	fi
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+# View a specific log file
+logs-view:
+	@if [ -z "$$FILE" ]; then \
+		echo "❌ Usage: make logs-view FILE=logs/benchmark-xxx.log"; \
+		echo ""; \
+		echo "📝 Danh sách logs có sẵn:"; \
+		ls -1 logs/*.log 2>/dev/null | head -10 || echo "   (Chưa có log files)"; \
+		exit 1; \
+	fi
+	@if [ -f "$$FILE" ]; then \
+		echo "📖 Xem log: $$FILE"; \
+		echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"; \
+		cat "$$FILE"; \
+	else \
+		echo "❌ File không tồn tại: $$FILE"; \
+		exit 1; \
+	fi
+
+# Clean old log files (older than 7 days)
+logs-clean:
+	@echo "🧹 Cleaning old log files (older than 7 days)..."
+	@if [ -d "logs" ]; then \
+		find logs -name "*.log" -type f -mtime +7 -delete 2>/dev/null; \
+		DELETED=$$(find logs -name "*.log" -type f -mtime +7 2>/dev/null | wc -l); \
+		if [ "$$DELETED" -gt 0 ]; then \
+			echo "✅ Đã xóa $$DELETED file(s)"; \
+		else \
+			echo "✅ Không có file nào cần xóa"; \
+		fi; \
+	else \
+		echo "✅ Thư mục logs không tồn tại"; \
+	fi
 
