@@ -248,7 +248,7 @@ micro-run-all-parallel:
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@echo "⚡ RUN PHASE for ALL MICRO workloads IN PARALLEL"
 	@echo "   (wordcount, sort, terasort, repartition, dfsioe-read, dfsioe-write)"
-	@echo "   Lưu ý: cần đủ tài nguyên CPU/RAM trong cluster Spark."
+	@echo "   Note: sufficient CPU/RAM resources are required in the Spark cluster."
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@set -e; \
 	for cfg in "wordcount spark" "sort spark" "terasort spark" "repartition spark" "dfsioe read" "dfsioe write"; do \
