@@ -6,7 +6,7 @@
 	kmeans bayes lr svm als rf gbt linear gmm lda pca xgboost svd \
 	scan join aggregation \
 	pagerank nutchindexing \
-	nweight \
+	nweight micro-all micro-prepare-all micro-run-all-parallel \
 	identity repartition-streaming wordcount-streaming \
 	check-job logs-list logs-latest logs-view logs-clean
 
@@ -228,6 +228,46 @@ dfsioe-read:
 
 dfsioe-write:
 	@bash scripts/run-hibench-workload.sh micro dfsioe write
+
+# Prepare data for all MICRO benchmarks (chạy tuần tự tất cả PREPARE)
+micro-prepare-all:
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "📦 PREPARE ALL MICRO workloads (sequential)"
+	@echo "   (wordcount, sort, terasort, repartition, dfsioe-read, dfsioe-write)"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@HIBENCH_PHASE=prepare bash scripts/run-hibench-workload.sh micro wordcount spark
+	@HIBENCH_PHASE=prepare bash scripts/run-hibench-workload.sh micro sort spark
+	@HIBENCH_PHASE=prepare bash scripts/run-hibench-workload.sh micro terasort spark
+	@HIBENCH_PHASE=prepare bash scripts/run-hibench-workload.sh micro repartition spark
+	@HIBENCH_PHASE=prepare bash scripts/run-hibench-workload.sh micro dfsioe read
+	@HIBENCH_PHASE=prepare bash scripts/run-hibench-workload.sh micro dfsioe write
+	@echo "✅ PREPARE for all MICRO workloads completed."
+
+# Run all MICRO benchmarks in parallel (CHỈ RUN, assume đã prepare trước)
+micro-run-all-parallel:
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "⚡ RUN PHASE for ALL MICRO workloads IN PARALLEL"
+	@echo "   (wordcount, sort, terasort, repartition, dfsioe-read, dfsioe-write)"
+	@echo "   Lưu ý: cần đủ tài nguyên CPU/RAM trong cluster Spark."
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@set -e; \
+	for cfg in "wordcount spark" "sort spark" "terasort spark" "repartition spark" "dfsioe read" "dfsioe write"; do \
+		set -- $$cfg; \
+		w=$$1; \
+		f=$$2; \
+		echo "▶️  Start $$w (run-only) ..."; \
+		HIBENCH_PHASE=run bash scripts/run-hibench-workload.sh micro $$w $$f & \
+	done; \
+	wait; \
+	echo "✅ All MICRO workloads RUN phase (parallel) finished."
+
+# Orchestrator: PREPARE all trước, rồi RUN song song
+micro-all:
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "🏃 micro-all = PREPARE all (sequential) + RUN all (parallel)"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@$(MAKE) micro-prepare-all
+	@$(MAKE) micro-run-all-parallel
 
 # ============================================================================
 # MACHINE LEARNING Benchmarks

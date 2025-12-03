@@ -10,6 +10,9 @@ CATEGORY=$1
 WORKLOAD=$2
 FRAMEWORK=${3:-spark}  # Default to spark
 
+# Phase control (all | prepare | run), default: all
+PHASE="${HIBENCH_PHASE:-all}"
+
 if [ -z "$CATEGORY" ] || [ -z "$WORKLOAD" ]; then
     echo "❌ Usage: $0 <category> <workload> [framework]"
     echo "   Categories: micro, ml, sql, websearch, graph, streaming"
@@ -160,19 +163,25 @@ if ! docker exec spark-master test -f "${WORKLOAD_PATH}/${FRAMEWORK}/run.sh"; th
     exit 1
 fi
 
-# Run prepare phase (if exists)
-if docker exec spark-master test -f "${WORKLOAD_PATH}/prepare/prepare.sh"; then
+# Run prepare phase (if exists and phase != run-only)
+if [ "$PHASE" != "run" ] && docker exec spark-master test -f "${WORKLOAD_PATH}/prepare/prepare.sh"; then
     log_and_display "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     log_and_display "1️⃣  PREPARE PHASE - Generate test data"
     log_and_display "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     log_and_display ""
-    
+
     PREPARE_OUTPUT=$(docker exec spark-master bash -c "cd /opt/hibench && set +e && ${WORKLOAD_PATH}/prepare/prepare.sh 2>&1; exit 0" 2>&1)
     echo "$PREPARE_OUTPUT" | grep -v "unbound variable" | grep -v "SyntaxWarning" | tail -20 | tee -a "$LOG_FILE" || true
-    
+
     log_and_display ""
     log_and_display "✅ Prepare phase completed"
     log_and_display ""
+fi
+
+# If phase is prepare-only, skip run phase
+if [ "$PHASE" = "prepare" ]; then
+    log_and_display "ℹ️  HIBENCH_PHASE=prepare -> skip RUN phase, only prepared data."
+    exit 0
 fi
 
 # Run benchmark phase
