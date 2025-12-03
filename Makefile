@@ -229,7 +229,7 @@ dfsioe-read:
 dfsioe-write:
 	@bash scripts/run-hibench-workload.sh micro dfsioe write
 
-# Prepare data for all MICRO benchmarks (chạy tuần tự tất cả PREPARE)
+# Prepare data for all MICRO benchmarks (run all PREPARE sequentially)
 micro-prepare-all:
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@echo "📦 PREPARE ALL MICRO workloads (sequential)"
@@ -243,7 +243,7 @@ micro-prepare-all:
 	@HIBENCH_PHASE=prepare bash scripts/run-hibench-workload.sh micro dfsioe write
 	@echo "✅ PREPARE for all MICRO workloads completed."
 
-# Run all MICRO benchmarks in parallel (CHỈ RUN, assume đã prepare trước)
+# Run all MICRO benchmarks in parallel (RUN ONLY, assume prepared in advance)
 micro-run-all-parallel:
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@echo "⚡ RUN PHASE for ALL MICRO workloads IN PARALLEL"
@@ -261,7 +261,7 @@ micro-run-all-parallel:
 	wait; \
 	echo "✅ All MICRO workloads RUN phase (parallel) finished."
 
-# Orchestrator: PREPARE all trước, rồi RUN song song
+# Orchestrator: Prepare all first, then Run in parallel
 micro-all:
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@echo "🏃 micro-all = PREPARE all (sequential) + RUN all (parallel)"
